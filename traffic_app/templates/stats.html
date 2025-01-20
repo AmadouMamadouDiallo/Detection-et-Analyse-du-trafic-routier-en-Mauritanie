@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="dashboard-container">
+    <h2>Tableau de Bord - Analyse de Trafic Routier</h2>
+
+    <!-- Formulaire d'upload -->
+    <div class="upload-section">
+        <form method="post" enctype="multipart/form-data" id="video-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="video">Télécharger une Vidéo :</label>
+                <input type="file" id="video" name="video" accept="video/*" required>
+            </div>
+            <div class="form-group">
+                <label for="location">Localisation :</label>
+                <input type="text" id="location" name="location" placeholder="Ex: Nouakchott, Mauritanie" required>
+            </div>
+            <button type="submit" class="submit-btn">Analyser</button>
+        </form>
+    </div>
+
+    <!-- Résultats et Statistiques -->
+    <div id="results" class="results-section" style="display: none;">
+        <div class="video-preview">
+            <h3>Vidéo Analyée</h3>
+            <video id="preview" controls style="max-width: 100%;"></video>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <h4>Véhicules Détectés</h4>
+                <span id="vehicle-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+                <h4>Niveau de Congestion</h4>
+                <span id="congestion-level" class="stat-value">0%</span>
+            </div>
+            <div class="stat-card">
+                <h4>Temps Moyen d'Arrêt</h4>
+                <span id="average-stop-time" class="stat-value">0 s</span>
+            </div>
+        </div>
+
+        <!-- Graphiques -->
+        <div class="charts-section">
+            <h3>Visualisations</h3>
+            <div class="chart-container">
+                <canvas id="vehicle-detection-chart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="congestion-trend-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Gestionnaire de formulaire
+const videoForm = document.getElementById('video-form');
+const resultsDiv = document.getElementById('results');
+const preview = document.getElementById('preview');
+const vehicleCountElem = document.getElementById('vehicle-count');
+const congestionLevelElem = document.getElementById('congestion-level');
+const averageStopTimeElem = document.getElementById('average-stop-time');
+
+videoForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    try {
+        const response = await fetch('/api/process-video/', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            alert('Erreur: ' + data.error);
+            return;
+        }
+
+        // Mise à jour des statistiques
+        vehicleCountElem.textContent = data.vehicle_count || 0;
+        congestionLevelElem.textContent = ((data.congestion_level || 0) * 100).toFixed(1) + '%';
+        averageStopTimeElem.textContent = (data.average_stop_time || 0).toFixed(2) + ' s';
+
+        // Afficher la vidéo téléchargée
+        const videoFile = document.getElementById('video').files[0];
+        preview.src = URL.createObjectURL(videoFile);
+
+        // Afficher les résultats
+        resultsDiv.style.display = 'block';
+
+        // Générer les graphiques
+        renderCharts(data);
+
+    } catch (error) {
+        alert('Erreur lors du traitement de la vidéo.');
+        console.error(error);
+    }
+});
+
+// Fonction pour afficher les graphiques
+function renderCharts(data) {
+    const vehicleChartCtx = document.getElementById('vehicle-detection-chart').getContext('2d');
+    const congestionTrendCtx = document.getElementById('congestion-trend-chart').getContext('2d');
+
+    // Graphique de détection des véhicules
+    new Chart(vehicleChartCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Voitures', 'Camions', 'Motos', 'Autres'],
+            datasets: [{
+                label: 'Nombre de Véhicules',
+                data: data.vehicle_distribution || [0, 0, 0, 0],
+                backgroundColor: ['#4CAF50', '#FF9800', '#2196F3', '#9C27B0']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            }
+        }
+    });
+
+    // Graphique de tendance de congestion
+    new Chart(congestionTrendCtx, {
+        type: 'line',
+        data: {
+            labels: data.congestion_trend_labels || [],
+            datasets: [{
+                label: 'Niveau de Congestion (%)',
+                data: data.congestion_trend_data || [],
+                borderColor: '#F44336',
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            }
+        }
+    });
+}
+</script>
+
+<style>
+.dashboard-container {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+.upload-section {
+    margin-bottom: 30px;
+}
+.results-section {
+    margin-top: 20px;
+}
+.stats-container {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+}
+.stat-card {
+    background: #f9f9f9;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    text-align: center;
+    width: 30%;
+}
+.stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+}
+.charts-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+.chart-container {
+    flex: 1;
+    min-width: 300px;
+}
+</style>
+{% endblock %}

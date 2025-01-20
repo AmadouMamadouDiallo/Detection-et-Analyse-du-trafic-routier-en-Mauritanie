@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="upload-container">
+    <h2>Analyse de Trafic Routier</h2>
+    <div class="upload-form">
+        <form method="post" enctype="multipart/form-data" id="video-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="video">Sélectionnez une vidéo :</label>
+                <input type="file" id="video" name="video" accept="video/*" required>
+            </div>
+            <div class="form-group">
+                <label for="location">Localisation :</label>
+                <input type="text" id="location" name="location" placeholder="Ex: Paris, France" required>
+            </div>
+            <button type="submit" class="submit-btn">Analyser la vidéo</button>
+        </form>
+    </div>
+    
+    <div id="results" class="results-container" style="display: none;">
+        <h3>Résultats de l'analyse</h3>
+        <div class="video-preview">
+            <video id="preview" controls style="max-width: 100%;"></video>
+        </div>
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">Véhicules détectés:</span>
+                <span id="vehicle-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Niveau de congestion:</span>
+                <span id="congestion-level" class="stat-value">0%</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('video-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const resultsDiv = document.getElementById('results');
+    const preview = document.getElementById('preview');
+    
+    try {
+        const response = await fetch('/api/process-video/', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            alert('Erreur: ' + data.error);
+            return;
+        }
+        
+        // Afficher les résultats
+        document.getElementById('vehicle-count').textContent = data.vehicle_count || 0;
+        document.getElementById('congestion-level').textContent = 
+            ((data.congestion_level || 0) * 100).toFixed(1) + '%';
+        
+        // Afficher la vidéo
+        const videoFile = document.getElementById('video').files[0];
+        preview.src = URL.createObjectURL(videoFile);
+        
+        resultsDiv.style.display = 'block';
+        
+    } catch (error) {
+        alert('Erreur lors du traitement de la vidéo');
+        console.error(error);
+    }
+});
+</script>
+{% endblock %}
