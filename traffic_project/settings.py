@@ -63,9 +63,13 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'traffic_app/static'),
 ]
 
-# Configurer les fichiers médias
+# Media files configuration
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Allowed upload file types
+ALLOWED_VIDEO_EXTENSIONS = ['mp4', 'avi', 'mov', 'mkv']
+MAX_UPLOAD_SIZE = 524288000  # 500MB in bytes
 
 # Assurez-vous d'avoir les répertoires nécessaires dans le dossier 'media'
 # Si ce n'est pas déjà fait, vous pouvez les créer manuellement

@@ -1,77 +1,161 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="upload-container">
-    <h2>Analyse de Trafic Routier</h2>
-    <div class="upload-form">
-        <form method="post" enctype="multipart/form-data" id="video-form">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="video">Sélectionnez une vidéo :</label>
-                <input type="file" id="video" name="video" accept="video/*" required>
-            </div>
-            <div class="form-group">
-                <label for="location">Localisation :</label>
-                <input type="text" id="location" name="location" placeholder="Ex: Paris, France" required>
-            </div>
-            <button type="submit" class="submit-btn">Analyser la vidéo</button>
-        </form>
-    </div>
-    
-    <div id="results" class="results-container" style="display: none;">
-        <h3>Résultats de l'analyse</h3>
-        <div class="video-preview">
-            <video id="preview" controls style="max-width: 100%;"></video>
-        </div>
-        <div class="stats">
-            <div class="stat-item">
-                <span class="stat-label">Véhicules détectés:</span>
-                <span id="vehicle-count" class="stat-value">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Niveau de congestion:</span>
-                <span id="congestion-level" class="stat-value">0%</span>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-video me-2"></i>
+                        Analyse de Trafic Routier
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <!-- Section Upload -->
+                    <div class="upload-section mb-4">
+                        <form id="video-upload-form" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="video" class="form-label">
+                                    <i class="fas fa-file-video me-2"></i>
+                                    Sélectionner une vidéo
+                                </label>
+                                <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
+                                <div class="form-text">Formats acceptés : MP4, AVI, MOV (max. 500MB)</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="location" class="form-label">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    Localisation
+                                </label>
+                                <input type="text" class="form-control" id="location" name="location" 
+                                       value="Nouakchott, Mauritanie" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-play me-2"></i>
+                                Analyser la vidéo
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Section Loading -->
+                    <div id="loading" class="text-center p-4" style="display: none;">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <h5>Traitement en cours...</h5>
+                        <div class="progress mt-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Section Résultats -->
+                    <div id="results" class="mt-4" style="display: none;">
+                        <h3 class="mb-4 text-center">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Résultats de l'analyse
+                        </h3>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-car me-2"></i>
+                                            Véhicules détectés
+                                        </h5>
+                                        <h2 id="vehicle-count" class="display-4">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">
+                                            <i class="fas fa-traffic-light me-2"></i>
+                                            Niveau de congestion
+                                        </h5>
+                                        <h2 id="congestion-level" class="display-4">0%</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="video-preview" class="mt-4">
+                            <div class="ratio ratio-16x9">
+                                <video controls class="rounded shadow">
+                                    <source src="" type="video/mp4">
+                                    Votre navigateur ne supporte pas la lecture de vidéos.
+                                </video>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+{% block extra_js %}
 <script>
-document.getElementById('video-form').addEventListener('submit', async function(e) {
+document.getElementById('video-upload-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     
     const formData = new FormData(this);
-    const resultsDiv = document.getElementById('results');
-    const preview = document.getElementById('preview');
+    const loading = document.getElementById('loading');
+    const results = document.getElementById('results');
+    const progressBar = document.querySelector('.progress-bar');
     
     try {
-        const response = await fetch('/api/process-video/', {
+        loading.style.display = 'block';
+        results.style.display = 'none';
+        
+        // Animation de la barre de progression
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            if (progress < 90) {
+                progress += 5;
+                progressBar.style.width = `${progress}%`;
+            }
+        }, 500);
+        
+        const response = await fetch('/upload-video/', {
             method: 'POST',
             body: formData
         });
         
         const data = await response.json();
         
-        if (data.error) {
-            alert('Erreur: ' + data.error);
-            return;
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        
+        if (!data.success) {
+            throw new Error(data.error);
         }
         
-        // Afficher les résultats
-        document.getElementById('vehicle-count').textContent = data.vehicle_count || 0;
+        // Afficher les résultats avec animation
+        document.getElementById('vehicle-count').textContent = data.results.vehicle_count || 0;
         document.getElementById('congestion-level').textContent = 
-            ((data.congestion_level || 0) * 100).toFixed(1) + '%';
+            ((data.results.congestion_level || 0) * 100).toFixed(1) + '%';
         
-        // Afficher la vidéo
-        const videoFile = document.getElementById('video').files[0];
-        preview.src = URL.createObjectURL(videoFile);
+        // Afficher la vidéo traitée
+        if (data.results.processed_video_url) {
+            const video = document.querySelector('#video-preview video');
+            video.src = data.results.processed_video_url;
+        }
         
-        resultsDiv.style.display = 'block';
+        results.style.display = 'block';
         
     } catch (error) {
-        alert('Erreur lors du traitement de la vidéo');
-        console.error(error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erreur',
+            text: error.message || 'Une erreur est survenue lors du traitement',
+        });
+    } finally {
+        loading.style.display = 'none';
     }
 });
 </script>
+{% endblock %}
 {% endblock %}

@@ -1,196 +1,234 @@
 {% extends 'base.html' %}
 
-{% block content %}
-<div class="dashboard-container">
-    <h2>Tableau de Bord - Analyse de Trafic Routier</h2>
+{% block extra_css %}
+<!-- Chart.js -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.css">
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+<style>
+    .dashboard-card {
+        transition: transform 0.3s ease;
+        margin-bottom: 1.5rem;
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin-bottom: 2rem;
+    }
+    
+    .table-container {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
 
-    <!-- Formulaire d'upload -->
-    <div class="upload-section">
-        <form method="post" enctype="multipart/form-data" id="video-form">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="video">Télécharger une Vidéo :</label>
-                <input type="file" id="video" name="video" accept="video/*" required>
-            </div>
-            <div class="form-group">
-                <label for="location">Localisation :</label>
-                <input type="text" id="location" name="location" placeholder="Ex: Nouakchott, Mauritanie" required>
-            </div>
-            <button type="submit" class="submit-btn">Analyser</button>
-        </form>
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- En-tête -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-chart-line me-2"></i>
+                Tableau de Bord du Trafic
+            </h2>
+        </div>
     </div>
 
-    <!-- Résultats et Statistiques -->
-    <div id="results" class="results-section" style="display: none;">
-        <div class="video-preview">
-            <h3>Vidéo Analyée</h3>
-            <video id="preview" controls style="max-width: 100%;"></video>
-        </div>
-
-        <div class="stats-container">
-            <div class="stat-card">
-                <h4>Véhicules Détectés</h4>
-                <span id="vehicle-count" class="stat-value">0</span>
-            </div>
-            <div class="stat-card">
-                <h4>Niveau de Congestion</h4>
-                <span id="congestion-level" class="stat-value">0%</span>
-            </div>
-            <div class="stat-card">
-                <h4>Temps Moyen d'Arrêt</h4>
-                <span id="average-stop-time" class="stat-value">0 s</span>
+    <!-- Cartes de statistiques -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">
+                        <i class="fas fa-car me-2"></i>
+                        Total Véhicules
+                    </h5>
+                    <div class="stat-value" id="total-vehicles">{{ total_vehicles }}</div>
+                </div>
             </div>
         </div>
-
-        <!-- Graphiques -->
-        <div class="charts-section">
-            <h3>Visualisations</h3>
-            <div class="chart-container">
-                <canvas id="vehicle-detection-chart"></canvas>
+        <div class="col-md-3">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">
+                        <i class="fas fa-video me-2"></i>
+                        Vidéos Analysées
+                    </h5>
+                    <div class="stat-value" id="total-videos">{{ total_videos }}</div>
+                </div>
             </div>
-            <div class="chart-container">
-                <canvas id="congestion-trend-chart"></canvas>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">
+                        <i class="fas fa-clock me-2"></i>
+                        Heure de Pointe
+                    </h5>
+                    <div class="stat-value" id="peak-hour">{{ peak_hour }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-muted">
+                        <i class="fas fa-tachometer-alt me-2"></i>
+                        Congestion Moyenne
+                    </h5>
+                    <div class="stat-value" id="avg-congestion">{{ avg_congestion }}%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card dashboard-card">
+                <div class="card-body">
+                    <h5 class="card-title">Évolution du Trafic</h5>
+                    <div class="chart-container">
+                        <canvas id="trafficChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card dashboard-card">
+                <div class="card-body">
+                    <h5 class="card-title">Distribution des Véhicules</h5>
+                    <div class="chart-container">
+                        <canvas id="vehicleTypeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Historique des Analyses -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card dashboard-card">
+                <div class="card-body">
+                    <h5 class="card-title mb-4">Historique des Analyses</h5>
+                    <div class="table-container">
+                        <table id="history-table" class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Localisation</th>
+                                    <th>Véhicules</th>
+                                    <th>Congestion</th>
+                                    <th>Durée</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for analysis in analysis_history %}
+                                <tr>
+                                    <td>{{ analysis.upload_date|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ analysis.location }}</td>
+                                    <td>{{ analysis.vehicle_count }}</td>
+                                    <td>{{ analysis.congestion_level|floatformat:1 }}%</td>
+                                    <td>{{ analysis.processing_time|floatformat:1 }}s</td>
+                                    <td>
+                                        <span class="badge {% if analysis.status == 'completed' %}bg-success{% else %}bg-warning{% endif %}">
+                                            {{ analysis.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
 <script>
-// Gestionnaire de formulaire
-const videoForm = document.getElementById('video-form');
-const resultsDiv = document.getElementById('results');
-const preview = document.getElementById('preview');
-const vehicleCountElem = document.getElementById('vehicle-count');
-const congestionLevelElem = document.getElementById('congestion-level');
-const averageStopTimeElem = document.getElementById('average-stop-time');
-
-videoForm.addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const formData = new FormData(this);
-
-    try {
-        const response = await fetch('/api/process-video/', {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            alert('Erreur: ' + data.error);
-            return;
+// Initialiser DataTable
+$(document).ready(function() {
+    $('#history-table').DataTable({
+        order: [[0, 'desc']],
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/fr-FR.json'
         }
+    });
+});
 
-        // Mise à jour des statistiques
-        vehicleCountElem.textContent = data.vehicle_count || 0;
-        congestionLevelElem.textContent = ((data.congestion_level || 0) * 100).toFixed(1) + '%';
-        averageStopTimeElem.textContent = (data.average_stop_time || 0).toFixed(2) + ' s';
-
-        // Afficher la vidéo téléchargée
-        const videoFile = document.getElementById('video').files[0];
-        preview.src = URL.createObjectURL(videoFile);
-
-        // Afficher les résultats
-        resultsDiv.style.display = 'block';
-
-        // Générer les graphiques
-        renderCharts(data);
-
-    } catch (error) {
-        alert('Erreur lors du traitement de la vidéo.');
-        console.error(error);
+// Graphique d'évolution du trafic
+const trafficCtx = document.getElementById('trafficChart').getContext('2d');
+new Chart(trafficCtx, {
+    type: 'line',
+    data: {
+        labels: {{ traffic_labels|safe }},
+        datasets: [{
+            label: 'Nombre de véhicules',
+            data: {{ traffic_data|safe }},
+            borderColor: 'rgb(75, 192, 192)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            }
+        }
     }
 });
 
-// Fonction pour afficher les graphiques
-function renderCharts(data) {
-    const vehicleChartCtx = document.getElementById('vehicle-detection-chart').getContext('2d');
-    const congestionTrendCtx = document.getElementById('congestion-trend-chart').getContext('2d');
-
-    // Graphique de détection des véhicules
-    new Chart(vehicleChartCtx, {
-        type: 'bar',
-        data: {
-            labels: ['Voitures', 'Camions', 'Motos', 'Autres'],
-            datasets: [{
-                label: 'Nombre de Véhicules',
-                data: data.vehicle_distribution || [0, 0, 0, 0],
-                backgroundColor: ['#4CAF50', '#FF9800', '#2196F3', '#9C27B0']
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: true
-                }
+// Graphique de distribution des véhicules
+const vehicleCtx = document.getElementById('vehicleTypeChart').getContext('2d');
+new Chart(vehicleCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ vehicle_types|safe }},
+        datasets: [{
+            data: {{ vehicle_counts|safe }},
+            backgroundColor: [
+                'rgb(255, 99, 132)',
+                'rgb(54, 162, 235)',
+                'rgb(255, 205, 86)',
+                'rgb(75, 192, 192)'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'right'
             }
         }
-    });
-
-    // Graphique de tendance de congestion
-    new Chart(congestionTrendCtx, {
-        type: 'line',
-        data: {
-            labels: data.congestion_trend_labels || [],
-            datasets: [{
-                label: 'Niveau de Congestion (%)',
-                data: data.congestion_trend_data || [],
-                borderColor: '#F44336',
-                fill: false
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: true
-                }
-            }
-        }
-    });
-}
+    }
+});
 </script>
-
-<style>
-.dashboard-container {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-}
-.upload-section {
-    margin-bottom: 30px;
-}
-.results-section {
-    margin-top: 20px;
-}
-.stats-container {
-    display: flex;
-    justify-content: space-around;
-    margin: 20px 0;
-}
-.stat-card {
-    background: #f9f9f9;
-    padding: 15px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    text-align: center;
-    width: 30%;
-}
-.stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
-}
-.charts-section {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.chart-container {
-    flex: 1;
-    min-width: 300px;
-}
-</style>
 {% endblock %}

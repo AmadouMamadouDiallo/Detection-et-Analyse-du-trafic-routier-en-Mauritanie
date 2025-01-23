@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+<style>
+    #map-container {
+        height: calc(100vh - 250px);
+        min-height: 500px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .map-controls {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    
+    .legend {
+        background: white;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+    }
+    
+    .legend-color {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        margin-right: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">
+                        <i class="fas fa-map-marked-alt me-2"></i>
+                        Carte du Trafic - {{ city }}
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="map-controls">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-filter me-2"></i>
+                                    Filtres
+                                </h5>
+                                <div class="mb-3">
+                                    <label class="form-label">Période</label>
+                                    <select class="form-select" id="time-range">
+                                        <option value="1">Dernière heure</option>
+                                        <option value="6">6 dernières heures</option>
+                                        <option value="12">12 dernières heures</option>
+                                        <option value="24" selected>24 dernières heures</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="legend">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Légende
+                                </h5>
+                                <div class="legend-item">
+                                    <div class="legend-color bg-success"></div>
+                                    <span>Trafic fluide</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bg-warning"></div>
+                                    <span>Trafic modéré</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color bg-danger"></div>
+                                    <span>Trafic dense</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <div id="map-container">
+                                {{ map|safe }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+document.getElementById('time-range').addEventListener('change', function() {
+    const timeRange = this.value;
+    window.location.href = `?time_range=${timeRange}`;
+});
+</script>
+{% endblock %}
