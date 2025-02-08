@@ -10,7 +10,7 @@
         overflow: hidden;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    
+
     .map-controls {
         background: white;
         padding: 15px;
@@ -18,20 +18,20 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         margin-bottom: 20px;
     }
-    
+
     .legend {
         background: white;
         padding: 10px;
         border-radius: 5px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    
+
     .legend-item {
         display: flex;
         align-items: center;
         margin: 5px 0;
     }
-    
+
     .legend-color {
         width: 20px;
         height: 20px;
@@ -70,30 +70,28 @@
                                     </select>
                                 </div>
                             </div>
-                            
+
                             <div class="legend">
                                 <h5 class="mb-3">
                                     <i class="fas fa-info-circle me-2"></i>
                                     Légende
                                 </h5>
                                 <div class="legend-item">
-                                    <div class="legend-color bg-success"></div>
+                                    <div class="legend-color" style="background: green;"></div>
                                     <span>Trafic fluide</span>
                                 </div>
                                 <div class="legend-item">
-                                    <div class="legend-color bg-warning"></div>
+                                    <div class="legend-color" style="background: yellow;"></div>
                                     <span>Trafic modéré</span>
                                 </div>
                                 <div class="legend-item">
-                                    <div class="legend-color bg-danger"></div>
+                                    <div class="legend-color" style="background: red;"></div>
                                     <span>Trafic dense</span>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-9">
-                            <div id="map-container">
-                                {{ map|safe }}
-                            </div>
+                            <div id="map-container"></div>
                         </div>
                     </div>
                 </div>
@@ -106,9 +104,54 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script>
-document.getElementById('time-range').addEventListener('change', function() {
-    const timeRange = this.value;
-    window.location.href = `?time_range=${timeRange}`;
-});
+    // Initialisation de la carte avec un point par défaut
+    var map = L.map('map-container').setView([18.079, -15.978], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Stocker les marqueurs pour éviter les doublons
+    var trafficMarkers = [];
+
+    function updateMapWithTraffic(lat, lng, trafficLevel) {
+        if (!lat || !lng) return;
+
+        console.log("Mise à jour de la carte avec :", lat, lng, trafficLevel);
+
+        // Définir la couleur du marqueur en fonction du niveau de trafic
+        let color;
+        if (trafficLevel === 'fluide') color = 'green';
+        else if (trafficLevel === 'modéré') color = 'yellow';
+        else color = 'red';
+
+        // Supprimer tous les anciens marqueurs avant d'ajouter le nouveau
+        trafficMarkers.forEach(marker => map.removeLayer(marker));
+        trafficMarkers = [];
+
+        // Ajouter le nouveau marqueur
+        let marker = L.marker([lat, lng], {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background:${color}; width:15px; height:15px; border-radius:50%;"></div>`,
+                iconSize: [15, 15]
+            })
+        }).addTo(map);
+
+        trafficMarkers.push(marker);
+
+        // Centrer la carte sur le nouveau point
+        map.setView([lat, lng], 14);
+    }
+
+    document.getElementById('time-range').addEventListener('change', function() {
+        const timeRange = this.value;
+        updateMap(timeRange);
+    });
+
+    function updateMap(timeRange) {
+        console.log('Carte mise à jour pour la période:', timeRange);
+    }
+
 </script>
 {% endblock %}

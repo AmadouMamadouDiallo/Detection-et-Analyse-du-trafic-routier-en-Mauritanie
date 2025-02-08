@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 def index(request):
     return render(request, 'index.html')
-
+def Acceuil(request):
+    return render(request, 'Acceuil.html')
 @csrf_exempt
 def analyze_local_video(request):
     if request.method == 'POST':
@@ -121,29 +122,73 @@ def map_view(request):
     }
     return render(request, 'map.html', context)
 
+from django.shortcuts import render
+from django.db.models import Q
+from datetime import datetime
+from .models import TrafficData, VideoUpload, Vehicle
+
+from django.shortcuts import render
+from django.db.models import Q
+from datetime import datetime
+from .models import TrafficData, VideoUpload, Vehicle
+
+from django.shortcuts import render
+from django.db.models import Q
+from datetime import datetime
+from .models import TrafficData, VideoUpload, Vehicle
+
 def stats_view(request):
-    # Récupérer les données pour le dashboard
-    latest_data = TrafficData.objects.all().order_by('-timestamp')[:24]
-    video_uploads = VideoUpload.objects.all().order_by('-upload_date')
+    # Récupérer les dates et localisations uniques pour le menu déroulant
+    available_dates = VideoUpload.objects.dates('upload_date', 'day', order='DESC')
+    available_locations = VideoUpload.objects.values_list('location', flat=True).distinct()
+
+    # Récupérer les filtres sélectionnés
+    selected_date = request.GET.get('selected_date', '')
+    selected_location = request.GET.get('selected_location', '')
+
+    filters = Q()
+
+    # Appliquer le filtre sur `VideoUpload`
+    if selected_date:
+        try:
+            selected_date = datetime.strptime(selected_date, "%Y-%m-%d").strftime("%Y-%m-%d")
+            filters &= Q(upload_date__date=selected_date)
+        except ValueError:
+            selected_date = ''
+
+    if selected_location:
+        filters &= Q(location=selected_location)
+
+    # Filtrer les vidéos uploadées
+    video_uploads = VideoUpload.objects.filter(filters).order_by('-upload_date')
+
+    # Appliquer le même filtre sur `TrafficData`
+    traffic_filters = Q()
+    if selected_date:
+        traffic_filters &= Q(timestamp__date=selected_date)  # Utiliser timestamp car c'est la date des données de trafic
+    if selected_location:
+        traffic_filters &= Q(location_name=selected_location)  # Utiliser `location_name` au lieu de `location`
+
+    latest_data = TrafficData.objects.filter(traffic_filters).order_by('-timestamp')
+
     vehicles = Vehicle.objects.all()
 
-    # Statistiques générales
+    # Statistiques après filtrage
     total_vehicles = sum(data.vehicle_count for data in latest_data)
     total_videos = video_uploads.count()
-    avg_congestion = sum(data.congestion_level for data in latest_data) / len(latest_data) if latest_data else 0
-    
-    # Déterminer l'heure de pointe (heure avec le plus de véhicules)
+    avg_congestion = (sum(data.congestion_level for data in latest_data) / len(latest_data)) if latest_data else 0
+
+    # Déterminer l'heure de pointe
     hour_counts = {}
     for data in latest_data:
         hour = data.timestamp.strftime('%H:00')
         hour_counts[hour] = hour_counts.get(hour, 0) + data.vehicle_count
     peak_hour = max(hour_counts.items(), key=lambda x: x[1])[0] if hour_counts else "N/A"
 
-    # Données pour le graphique d'évolution du trafic
+    # Graphiques
     traffic_labels = [data.timestamp.strftime('%H:%M') for data in latest_data]
     traffic_data = [data.vehicle_count for data in latest_data]
 
-    # Données pour le graphique de distribution des véhicules
     vehicle_types = ['Voitures', 'Camions', 'Bus', 'Motos']
     vehicle_counts = [
         vehicles.filter(vehicle_type='car').count(),
@@ -152,32 +197,53 @@ def stats_view(request):
         vehicles.filter(vehicle_type='motorcycle').count()
     ]
 
-    # Historique des analyses
-    analysis_history = []
-    for upload in video_uploads:
-        analysis = {
+    # Historique filtré
+    analysis_history = [
+        {
             'upload_date': upload.upload_date,
             'location': upload.location,
             'vehicle_count': upload.vehicle_count,
             'congestion_level': upload.congestion_level * 100,
             'processing_time': upload.processing_time,
             'status': upload.status
-        }
-        analysis_history.append(analysis)
+        } for upload in video_uploads
+    ]
 
     context = {
         'total_vehicles': total_vehicles,
         'total_videos': total_videos,
         'peak_hour': peak_hour,
-        'avg_congestion': round(avg_congestion * 100, 1),
+        'avg_congestion': round(avg_congestion * 100, 1),  # Conversion en pourcentage
         'traffic_labels': traffic_labels,
         'traffic_data': traffic_data,
         'vehicle_types': vehicle_types,
         'vehicle_counts': vehicle_counts,
-        'analysis_history': analysis_history
+        'analysis_history': analysis_history,
+        'available_dates': available_dates,
+        'available_locations': available_locations,
+        'selected_date': selected_date,
+        'selected_location': selected_location
     }
 
     return render(request, 'stats.html', context)
+
+
+from django.http import JsonResponse
+from django.shortcuts import redirect
+from .models import VideoUpload, TrafficData, Vehicle
+
+def clear_history(request):
+    if request.method == "POST":
+        # Supprimer toutes les entrées de l'historique
+        VideoUpload.objects.all().delete()
+        TrafficData.objects.all().delete()
+        Vehicle.objects.all().delete()
+        return JsonResponse({'success': True, 'message': "Historique supprimé avec succès"})
+    
+    return JsonResponse({'success': False, 'message': "Requête invalide"}, status=400)
+
+
+
 
 @csrf_exempt
 def process_video(request):
@@ -285,3 +351,27 @@ def upload_video(request):
         'success': False,
         'error': 'Méthode non autorisée ou fichier manquant'
     })
+from django.http import JsonResponse
+import random
+
+def process_video(request):
+    if request.method == 'POST':
+        video_path = request.POST.get('video_path')
+        latitude = request.POST.get('latitude')
+        longitude = request.POST.get('longitude')
+
+        traffic_levels = ['fluide', 'modéré', 'dense']
+        traffic_level = random.choice(traffic_levels)
+
+        return JsonResponse({
+            'results': {
+                'video_url': '/static/videos/processed.mp4',
+                'vehicle_count': random.randint(1, 50),
+                'congestion_level': random.uniform(0.1, 1.0),
+                'latitude': latitude,
+                'longitude': longitude,
+                'traffic_level': traffic_level
+            }
+        })
+
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=400)

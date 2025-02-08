@@ -29,9 +29,11 @@
                                     Localisation
                                 </label>
                                 <input type="text" class="form-control" id="location" name="location" 
-                                       value="Nouakchott, Mauritanie" required>
+                                       value="Nouakchott, Mauritanie" required readonly>
                             </div>
-                            <button type="submit" class="btn btn-primary w-100">
+                            <!-- Ajout de la carte interactive -->
+                            <div id="map" style="height: 300px; border-radius: 10px;"></div>
+                            <button type="submit" class="btn btn-primary w-100 mt-3">
                                 <i class="fas fa-play me-2"></i>
                                 Analyser la vidéo
                             </button>
@@ -157,5 +159,51 @@ document.getElementById('video-upload-form').addEventListener('submit', async fu
     }
 });
 </script>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        var map = L.map('map').setView([18.079, -15.965], 12);
+    
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+    
+        var marker = L.marker([18.079, -15.965], { draggable: true }).addTo(map);
+    
+        function reverseGeocode(lat, lon) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        document.getElementById('location').value = data.display_name; 
+                    } else {
+                        document.getElementById('location').value = lat.toFixed(6) + ", " + lon.toFixed(6);
+                    }
+                })
+                .catch(error => {
+                    console.error("Erreur de géocodage inverse :", error);
+                    document.getElementById('location').value = lat.toFixed(6) + ", " + lon.toFixed(6);
+                });
+        }
+    
+        marker.on('dragend', function (event) {
+            var latlng = marker.getLatLng();
+            reverseGeocode(latlng.lat, latlng.lng);
+        });
+    
+        map.on('click', function (e) {
+            marker.setLatLng(e.latlng);
+            reverseGeocode(e.latlng.lat, e.latlng.lng);
+        });
+    });
+    </script>
+    
 {% endblock %}
 {% endblock %}

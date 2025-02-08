@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <section class="hero d-flex align-items-center justify-content-center text-center position-relative" style="height: 100vh; background: url('city_traffic.jpg') no-repeat center center/cover; overflow: hidden;">
+        <div class="hero-overlay position-absolute w-100 h-100" style="background: rgba(0, 0, 0, 0.6);"></div>
+        <div class="hero-content text-white text-center p-5 rounded position-relative animate-fade-in">
+            <h1 class="display-1 fw-bold text-uppercase animate-slide-in">Smart Traffic Nouakchott</h1>
+            <p class="lead animate-slide-in delay-1">Optimisez vos trajets grâce à une technologie de pointe.</p>
+            <a href="#services" class="btn btn-lg btn-neon px-4 py-3 mt-3 animate-slide-in delay-2">Explorer</a>
+        </div>
+    </section>
+</div>
+
+<section id="services" class="py-5">
+    <div class="container">
+        <h2 class="text-center mb-5 fw-bold animate-fade-in">Nos Services</h2>
+        <div class="row g-4 text-center">
+            <div class="col-md-4">
+                <div class="service-card shadow-lg rounded-4 p-4 animate-fade-in">
+                    <i class="fas fa-map-marked-alt fa-4x text-primary mb-3"></i>
+                    <h3 class="fw-bold">Navigation Intelligente</h3>
+                    <p>Des itinéraires optimisés en temps réel.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="service-card shadow-lg rounded-4 p-4 animate-fade-in delay-1">
+                    <i class="fas fa-bell fa-4x text-warning mb-3"></i>
+                    <h3 class="fw-bold">Alertes Personnalisées</h3>
+                    <p>Recevez des notifications sur le trafic en direct.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="service-card shadow-lg rounded-4 p-4 animate-fade-in delay-2">
+                    <i class="fas fa-brain fa-4x text-success mb-3"></i>
+                    <h3 class="fw-bold">Analyse IA</h3>
+                    <p>Anticipez les conditions de circulation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="text-center py-5">
+    <h2 class="section-title">Pourquoi Choisir Smart Traffic ?</h2>
+    <p class="section-subtitle">Nous utilisons des données en temps réel pour améliorer votre expérience de conduite.</p>
+</section>
+
+{% endblock %}
+
+{% block styles %}
+<style>
+    .hero-content {
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 60px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .btn-neon {
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-radius: 40px;
+        padding: 18px 35px;
+        background: linear-gradient(90deg, #ff416c, #ff4b2b);
+        color: white;
+        transition: all 0.3s;
+        box-shadow: 0 0 15px rgba(255, 65, 108, 0.7);
+    }
+    .btn-neon:hover {
+        transform: scale(1.1);
+        box-shadow: 0px 0px 40px rgba(255, 65, 108, 1);
+    }
+    .service-card {
+        background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(245,245,245,0.9));
+        transition: all 0.3s ease-in-out;
+        backdrop-filter: blur(10px);
+    }
+    .service-card:hover {
+        transform: translateY(-12px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    }
+    .animate-slide-in {
+        opacity: 0;
+        transform: translateY(30px);
+        animation: slideIn 1s ease-out forwards;
+    }
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll(".animate-slide-in").forEach((el, index) => {
+            setTimeout(() => {
+                el.style.opacity = "1";
+                el.style.transform = "translateY(0)";
+            }, index * 200);
+        });
+    });
+</script>
+{% endblock %}
