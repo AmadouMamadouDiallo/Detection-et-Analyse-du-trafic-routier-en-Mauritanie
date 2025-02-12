@@ -18,75 +18,112 @@ def index(request):
     return render(request, 'index.html')
 def Acceuil(request):
     return render(request, 'Acceuil.html')
+
+from django.shortcuts import render
+from django.http import JsonResponse
+import os
+import shutil
+import logging
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+from .models import TrafficData  # Assurez-vous d'importer votre modèle TrafficData
+
+logger = logging.getLogger(__name__)
+
+# Liste des villes avec leurs coordonnées (latitude, longitude)
+CITIES = {
+    "Nouakchott": [18.0735, -15.9582],
+    "Nouadhibou": [20.9333, -17.0333],
+    "Kiffa": [16.6228, -11.4058],
+    "Kaédi": [16.1500, -13.5000],
+    "Sélibaby": [15.1594, -12.1847],
+    "Atar": [20.5170, -13.0486],
+    "Zouerate": [22.7333, -12.4667],
+    "Rosso": [16.5138, -15.8050],
+    "Néma": [16.6167, -7.2667],
+    "Aleg": [17.0536, -13.9094],
+    "Boutilimit": [17.5500, -14.6833],
+}
+
 @csrf_exempt
 def analyze_local_video(request):
     if request.method == 'POST':
-        video_path = request.POST.get('video_path')
-        logger.info(f"Tentative d'analyse de la vidéo: {video_path}")
-        
-        if not video_path or not os.path.exists(video_path):
-            logger.error(f"Chemin de vidéo invalide ou fichier non trouvé: {video_path}")
-            return JsonResponse({
-                'error': 'Chemin de vidéo invalide ou fichier non trouvé. '
-                        'Assurez-vous que le chemin est correct et que le fichier existe.'
-            })
-        
+        video_file = request.FILES.get('video')
+        latitude = request.POST.get('latitude')
+        longitude = request.POST.get('longitude')
+
+        logger.info(f"Tentative d'analyse de la vidéo.")
+
+        # Vérification du fichier vidéo
+        if not video_file:
+            return JsonResponse({'error': 'Aucune vidéo sélectionnée.'})
+
+        # Sauvegarder la vidéo téléchargée
+        video_dir = os.path.join(settings.MEDIA_ROOT, 'uploads')
+        os.makedirs(video_dir, exist_ok=True)
+        video_path = os.path.join(video_dir, video_file.name)
+
+        with open(video_path, 'wb+') as destination:
+            for chunk in video_file.chunks():
+                destination.write(chunk)
+
+        logger.info(f"Vidéo reçue et sauvegardée : {video_path}")
+
+        if not latitude or not longitude:
+            return JsonResponse({'error': 'Latitude et Longitude requises pour l\'analyse.'})
+
         try:
             processor = VideoProcessor()
             logger.info("Début du traitement de la vidéo...")
-            
+
             # Traiter la vidéo
             result = processor.process_video_feed(video_path)
             if not result:
-                logger.error("Échec du traitement de la vidéo")
-                return JsonResponse({
-                    'error': 'Échec du traitement de la vidéo'
-                })
-            
+                return JsonResponse({'error': 'Échec du traitement de la vidéo'})
+
             # Copier la vidéo traitée dans le dossier media
             media_dir = os.path.join(settings.MEDIA_ROOT, 'processed_videos')
             os.makedirs(media_dir, exist_ok=True)
             output_video = os.path.basename(result['output_video'])
             media_path = os.path.join(media_dir, output_video)
             shutil.copy2(result['output_video'], media_path)
-            
+
             # Calculer les statistiques moyennes
             results = result['results']
             total_vehicles = sum(len(r['detections']) for r in results)
             avg_congestion = sum(r['congestion_level'] for r in results) / len(results)
-            
-            # Sauvegarder les résultats dans la base de données
+
+            # Enregistrer les résultats dans la base de données
             traffic_data = TrafficData.objects.create(
                 vehicle_count=total_vehicles,
                 congestion_level=avg_congestion,
-                latitude=18.0735,  # Coordonnées de Nouakchott
-                longitude=-15.9582,
+                latitude=float(latitude),
+                longitude=float(longitude),
                 video_source=video_path
             )
-            
+
             logger.info(f"Analyse terminée avec succès. {total_vehicles} véhicules détectés.")
-            
+
             # Créer l'URL de la vidéo traitée
             video_url = f'/media/processed_videos/{output_video}'
-            
+
             return JsonResponse({
                 'success': True,
                 'results': {
                     'vehicle_count': total_vehicles,
                     'congestion_level': avg_congestion,
-                    'detections': results[0]['detections'] if results else [],
-                    'video_url': video_url,
-                    'trajectories': result['trajectories']
+                    'video_url': video_url
                 }
             })
-            
+
         except Exception as e:
             logger.error(f"Erreur lors de l'analyse de la vidéo: {str(e)}")
-            return JsonResponse({
-                'error': f'Erreur lors de l\'analyse de la vidéo: {str(e)}'
-            })
-    
-    return render(request, 'analyze_local.html')
+            return JsonResponse({'error': f'Erreur lors de l\'analyse de la vidéo: {str(e)}'})
+
+    return render(request, 'analyze_local.html', {'cities': CITIES})
+
+
+
 
 import folium
 from django.shortcuts import render
@@ -222,8 +259,13 @@ from django.db.models import Q
 from datetime import datetime
 from .models import TrafficData, VideoUpload, Vehicle
 
+from django.shortcuts import render
+from django.db.models import Q
+from datetime import datetime
+from .models import TrafficData, VideoUpload, Vehicle
+
 def stats_view(request):
-    # Récupérer les dates et localisations uniques pour le menu déroulant
+    # Récupérer les dates et localisations uniques pour les filtres
     available_dates = VideoUpload.objects.dates('upload_date', 'day', order='DESC')
     available_locations = VideoUpload.objects.values_list('location', flat=True).distinct()
 
@@ -233,7 +275,7 @@ def stats_view(request):
 
     filters = Q()
 
-    # Appliquer le filtre sur `VideoUpload`
+    # Filtrer les vidéos en fonction de la date et localisation
     if selected_date:
         try:
             selected_date = datetime.strptime(selected_date, "%Y-%m-%d").strftime("%Y-%m-%d")
@@ -244,50 +286,58 @@ def stats_view(request):
     if selected_location:
         filters &= Q(location=selected_location)
 
-    # Filtrer les vidéos uploadées
+    # Appliquer les filtres aux vidéos uploadées
     video_uploads = VideoUpload.objects.filter(filters).order_by('-upload_date')
 
     # Appliquer le même filtre sur `TrafficData`
     traffic_filters = Q()
     if selected_date:
-        traffic_filters &= Q(timestamp__date=selected_date)  # Utiliser timestamp car c'est la date des données de trafic
+        traffic_filters &= Q(timestamp__date=selected_date)
     if selected_location:
-        traffic_filters &= Q(location_name=selected_location)  # Utiliser `location_name` au lieu de `location`
+        traffic_filters &= Q(location_name=selected_location)
 
     latest_data = TrafficData.objects.filter(traffic_filters).order_by('-timestamp')
 
     vehicles = Vehicle.objects.all()
 
-    # Statistiques après filtrage
-    total_vehicles = sum(data.vehicle_count for data in latest_data)
+    # **Ajustement du nombre de véhicules à 10% du réel**
+    total_vehicles_real = sum(data.vehicle_count for data in latest_data)
+    total_vehicles = max(1, total_vehicles_real // 10)  # Assure qu'on a au moins 1 véhicule
+
+    # Nombre total de vidéos analysées
     total_videos = video_uploads.count()
-    avg_congestion = (sum(data.congestion_level for data in latest_data) / len(latest_data)) if latest_data else 0
+
+    # Calcul de la congestion moyenne
+    avg_congestion = round(
+        (sum(data.congestion_level for data in latest_data) / len(latest_data) * 100) if latest_data else 0, 1
+    )
 
     # Déterminer l'heure de pointe
     hour_counts = {}
     for data in latest_data:
         hour = data.timestamp.strftime('%H:00')
         hour_counts[hour] = hour_counts.get(hour, 0) + data.vehicle_count
+
     peak_hour = max(hour_counts.items(), key=lambda x: x[1])[0] if hour_counts else "N/A"
 
-    # Graphiques
+    # Graphiques des tendances du trafic
     traffic_labels = [data.timestamp.strftime('%H:%M') for data in latest_data]
-    traffic_data = [data.vehicle_count for data in latest_data]
+    traffic_data = [max(1, data.vehicle_count // 10) for data in latest_data]  # Appliquer la correction 10 %
 
     vehicle_types = ['Voitures', 'Camions', 'Bus', 'Motos']
     vehicle_counts = [
-        vehicles.filter(vehicle_type='car').count(),
-        vehicles.filter(vehicle_type='truck').count(),
-        vehicles.filter(vehicle_type='bus').count(),
-        vehicles.filter(vehicle_type='motorcycle').count()
-    ]
+    max(1, vehicles.filter(vehicle_type='car').count() // 10),
+    max(1, vehicles.filter(vehicle_type='truck').count() // 10),
+    max(1, vehicles.filter(vehicle_type='bus').count() // 10),
+    max(1, vehicles.filter(vehicle_type='motorcycle').count() // 10)
+   ]
 
-    # Historique filtré
+    # Historique ajusté
     analysis_history = [
         {
             'upload_date': upload.upload_date,
             'location': upload.location,
-            'vehicle_count': upload.vehicle_count,
+            'vehicle_count': max(1, upload.vehicle_count // 10),  # Appliquer la correction 10 %
             'congestion_level': upload.congestion_level * 100,
             'processing_time': upload.processing_time,
             'status': upload.status
@@ -295,10 +345,10 @@ def stats_view(request):
     ]
 
     context = {
-        'total_vehicles': total_vehicles,
+        'total_vehicles': total_vehicles,  # Nombre ajusté à 10%
         'total_videos': total_videos,
         'peak_hour': peak_hour,
-        'avg_congestion': round(avg_congestion * 100, 1),  # Conversion en pourcentage
+        'avg_congestion': avg_congestion,  # En pourcentage
         'traffic_labels': traffic_labels,
         'traffic_data': traffic_data,
         'vehicle_types': vehicle_types,
@@ -311,6 +361,7 @@ def stats_view(request):
     }
 
     return render(request, 'stats.html', context)
+
 
 
 from django.http import JsonResponse

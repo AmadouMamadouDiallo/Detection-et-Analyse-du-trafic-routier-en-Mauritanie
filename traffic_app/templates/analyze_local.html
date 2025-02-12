@@ -2,111 +2,98 @@
 
 {% block content %}
 <div class="upload-container">
-    <h2>Analyse de Vidéo Locale</h2>
-    
+    <h2>📹 Analyse de Trafic Routier</h2>
+
     <div id="error-message" class="alert alert-danger" style="display: none;">
         <p></p>
     </div>
-    
+
     <div id="loading" class="loading" style="display: none;">
         <div class="spinner"></div>
         <p>Analyse de la vidéo en cours...</p>
     </div>
-    
+
     <div class="upload-form">
-        <form method="post" id="video-form">
+        <form method="post" id="video-form" enctype="multipart/form-data">
             {% csrf_token %}
+
+            <!-- Sélection de la vidéo -->
             <div class="form-group">
-                <label for="video_path">Chemin de la vidéo sur votre ordinateur :</label>
-                <input type="text" id="video_path" name="video_path" placeholder="Ex: C:\Videos\traffic.mp4" required>
-                <small class="help-text">Entrez le chemin complet vers votre fichier vidéo</small>
+                <label for="video"><i class="fas fa-file-upload"></i> Sélectionner une vidéo</label>
+                <input type="file" id="video" name="video" accept="video/*" required>
+                <small class="help-text">Formats acceptés : MP4, AVI, MOV (max. 500MB)</small>
             </div>
 
-            <!-- Latitude -->
+            <!-- Sélection de la ville -->
+            <div class="form-group">
+                <label for="city"><i class="fas fa-map-marker-alt"></i> Sélectionner une ville :</label>
+                <select id="city" name="city" class="form-select">
+                    {% for city, coords in cities.items %}
+                    <option value="{{ city }}" {% if city == "Nouakchott" %}selected{% endif %}>
+                        {{ city }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Carte interactive -->
+            <div id="map" style="height: 400px; margin-bottom: 15px;"></div>
+
+            <!-- Latitude et Longitude -->
             <div class="form-group">
                 <label for="latitude">Latitude</label>
-                <input type="text" id="latitude" name="latitude" placeholder="Ex: 18.079" required>
+                <input type="text" id="latitude" name="latitude" readonly required>
             </div>
 
-            <!-- Longitude -->
             <div class="form-group">
                 <label for="longitude">Longitude</label>
-                <input type="text" id="longitude" name="longitude" placeholder="Ex: -15.978" required>
+                <input type="text" id="longitude" name="longitude" readonly required>
             </div>
 
             <button type="submit" class="submit-btn" id="submit-btn">Analyser la vidéo</button>
         </form>
     </div>
-    
-    <div id="results" class="results-container" style="display: none;">
-        <h3>Résultats de l'analyse</h3>
-        
-        <div class="video-container">
-            <video id="processed-video" controls>
-                <source src="" type="video/mp4">
-                Votre navigateur ne supporte pas la lecture de vidéos.
-            </video>
-        </div>
-
-        <div class="stats">
-            <div class="stat-item">
-                <span class="stat-label">Véhicules détectés:</span>
-                <span id="vehicle-count" class="stat-value">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Niveau de congestion:</span>
-                <span id="congestion-level" class="stat-value">0%</span>
-            </div>
-        </div>
-    </div>
 </div>
 
+<!-- Leaflet.js pour la carte -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
-document.getElementById('video-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
+document.addEventListener("DOMContentLoaded", function() {
+    var citySelect = document.getElementById("city");
+    var map = L.map('map').setView([18.0735, -15.9582], 13);
     
-    const errorDiv = document.getElementById('error-message');
-    const loadingDiv = document.getElementById('loading');
-    const resultsDiv = document.getElementById('results');
-    const submitBtn = document.getElementById('submit-btn');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-    errorDiv.style.display = 'none';
-    resultsDiv.style.display = 'none';
-    loadingDiv.style.display = 'block';
-    submitBtn.disabled = true;
+    var marker = L.marker([18.0735, -15.9582], { draggable: true }).addTo(map);
 
-    try {
-        const formData = new FormData(this);
-        formData.append('latitude', document.getElementById('latitude').value);
-        formData.append('longitude', document.getElementById('longitude').value);
-
-        const response = await fetch('', {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-            errorDiv.querySelector('p').textContent = data.error;
-            errorDiv.style.display = 'block';
-            return;
-        }
-
-        document.getElementById('vehicle-count').textContent = data.results.vehicle_count;
-        document.getElementById('congestion-level').textContent = (data.results.congestion_level * 100).toFixed(1) + '%';
-        
-        updateMapWithTraffic(data.results.latitude, data.results.longitude, data.results.traffic_level);
-
-        resultsDiv.style.display = 'block';
-
-    } catch (error) {
-        errorDiv.querySelector('p').textContent = 'Erreur : ' + error.message;
-        errorDiv.style.display = 'block';
-    } finally {
-        loadingDiv.style.display = 'none';
-        submitBtn.disabled = false;
+    function updateLatLng(lat, lon) {
+        document.getElementById("latitude").value = lat.toFixed(6);
+        document.getElementById("longitude").value = lon.toFixed(6);
     }
+    updateLatLng(marker.getLatLng().lat, marker.getLatLng().lng);
+
+    marker.on('dragend', function(event) {
+        var position = marker.getLatLng();
+        updateLatLng(position.lat, position.lng);
+    });
+
+    citySelect.addEventListener("change", function() {
+        var selectedCity = this.value;
+        var coords = {
+            {% for city, coords in cities.items %}
+            "{{ city }}": [{{ coords.0 }}, {{ coords.1 }}],
+            {% endfor %}
+        };
+        if (coords[selectedCity]) {
+            map.setView(coords[selectedCity], 13);
+            marker.setLatLng(coords[selectedCity]);
+            updateLatLng(coords[selectedCity][0], coords[selectedCity][1]);
+        }
+    });
 });
 </script>
 {% endblock %}
