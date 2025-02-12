@@ -88,39 +88,132 @@ def analyze_local_video(request):
     
     return render(request, 'analyze_local.html')
 
+import folium
+from django.shortcuts import render
+from django.db.models import Q
+from datetime import datetime
+from .models import TrafficData
+
+import folium
+from django.shortcuts import render
+from django.db.models import Q
+from datetime import datetime
+from .models import TrafficData
+
+import folium
+from django.shortcuts import render
+from django.db.models import Q
+from datetime import datetime
+from .models import TrafficData
+
+# Définition des coordonnées des villes
+CITIES = {
+    "Nouakchott": [18.0735, -15.9582],
+    "Nouadhibou": [20.9333, -17.0333],
+    "Kiffa": [16.6228, -11.4058],
+    "Kaédi": [16.1500, -13.5000],
+    "Sélibaby": [15.1594, -12.1847],
+    "Atar": [20.5170, -13.0486],
+    "Zouerate": [22.7333, -12.4667],
+    "Rosso": [16.5138, -15.8050],
+    "Néma": [16.6167, -7.2667],
+    "Aleg": [17.0536, -13.9094],
+    "Boutilimit": [17.5500, -14.6833],
+}
+
 def map_view(request):
-    # Coordonnées de Nouakchott
-    nouakchott_map = folium.Map(
-        location=[18.0735, -15.9582],  # Coordonnées de Nouakchott
-        zoom_start=13
-    )
-    
-    # Ajouter un marqueur pour le centre-ville
-    folium.Marker(
-        [18.0735, -15.9582],
-        popup='Centre-ville de Nouakchott',
-        icon=folium.Icon(color='red', icon='info-sign')
-    ).add_to(nouakchott_map)
-    
-    # Récupérer les données de trafic
-    traffic_data = TrafficData.objects.all()
-    
-    # Ajouter des marqueurs pour chaque point de données
+    # Récupérer les dates disponibles pour le filtrage
+    available_dates = TrafficData.objects.dates('timestamp', 'day', order='DESC')
+
+    # Récupérer les paramètres sélectionnés depuis la requête GET
+    selected_city = request.GET.get('selected_city', 'Nouakchott')
+    selected_date = request.GET.get('selected_date', '')
+    selected_location = request.GET.get('selected_location', '')  # Localisation spécifique
+
+    # Création des filtres pour TrafficData
+    traffic_filters = Q()
+
+    # Filtrer selon la ville sélectionnée
+    if selected_city in CITIES:
+        traffic_filters &= Q(location_name__icontains=selected_city)
+
+    # Filtrer selon la localisation spécifique (si fournie)
+    if selected_location:
+        traffic_filters &= Q(location_name__icontains=selected_location)
+
+    # Filtrer par date si un filtre de date est fourni
+    if selected_date:
+        try:
+            selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
+            traffic_filters &= Q(timestamp__date=selected_date_obj)
+        except ValueError:
+            selected_date = ''
+
+    # Récupérer les données filtrées
+    traffic_data = TrafficData.objects.filter(traffic_filters).order_by('-timestamp')
+
+    # Vérifier s'il existe des données
+    if traffic_data.exists():
+        # Prendre le premier point pour centrer la carte
+        first_data = traffic_data.first()
+        map_center = [first_data.latitude, first_data.longitude]
+    else:
+        # Utiliser la ville sélectionnée comme point central par défaut
+        map_center = CITIES.get(selected_city, [18.0735, -15.9582])
+
+    # Créer la carte centrée sur l'emplacement sélectionné
+    traffic_map = folium.Map(location=map_center, zoom_start=13)
+
+    # Ajouter un marqueur pour chaque analyse de trafic
     for data in traffic_data:
-        color = 'green' if data.congestion_level < 0.3 else 'orange' if data.congestion_level < 0.7 else 'red'
-        folium.CircleMarker(
+        # Déterminer la couleur et l'icône selon le niveau de congestion
+        if data.congestion_level >= 0.8:
+            color = 'red'
+            icon = 'exclamation-triangle'
+        elif data.congestion_level >= 0.5:
+            color = 'orange'
+            icon = 'car'
+        else:
+            color = 'green'
+            icon = 'check-circle'
+
+        # Infos du popup
+        popup_info = f'''
+        <b>Localisation :</b> {data.location_name} <br>
+        <b>Véhicules :</b> {data.vehicle_count} <br>
+        <b>Congestion :</b> {data.congestion_level:.1%} <br>
+        <b>Heure :</b> {data.timestamp.strftime('%H:%M')} <br>
+        '''
+
+        if data.congestion_level >= 0.8:
+            popup_info += "<b style='color:red;'>🚨 EMBOUTEILLAGE 🚨</b>"
+
+        folium.Marker(
             location=[data.latitude, data.longitude],
-            radius=10,
-            popup=f'Véhicules: {data.vehicle_count}<br>Congestion: {data.congestion_level:.1%}',
-            color=color,
-            fill=True
-        ).add_to(nouakchott_map)
-    
+            popup=folium.Popup(popup_info, max_width=300),
+            icon=folium.Icon(color=color, icon=icon, prefix='fa')
+        ).add_to(traffic_map)
+
+    # Récupérer toutes les localisations disponibles pour le filtrage
+    available_locations = TrafficData.objects.values_list('location_name', flat=True).distinct()
+
+    # Contexte pour le template
     context = {
-        'map': nouakchott_map._repr_html_(),
-        'city': 'Nouakchott'
+        'map': traffic_map._repr_html_(),
+        'available_dates': available_dates,
+        'available_locations': available_locations,
+        'selected_date': selected_date,
+        'selected_city': selected_city,
+        'selected_location': selected_location,
+        'cities': CITIES.keys(),
     }
+
     return render(request, 'map.html', context)
+
+
+
+
+
 
 from django.shortcuts import render
 from django.db.models import Q

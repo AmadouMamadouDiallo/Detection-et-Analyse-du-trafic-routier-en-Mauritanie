@@ -25,19 +25,6 @@
         border-radius: 5px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-
-    .legend-item {
-        display: flex;
-        align-items: center;
-        margin: 5px 0;
-    }
-
-    .legend-color {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        margin-right: 10px;
-    }
 </style>
 {% endblock %}
 
@@ -49,49 +36,68 @@
                 <div class="card-header bg-primary text-white">
                     <h2 class="mb-0">
                         <i class="fas fa-map-marked-alt me-2"></i>
-                        Carte du Trafic - {{ city }}
+                        Carte du Trafic
                     </h2>
                 </div>
                 <div class="card-body">
                     <div class="row">
+                        <!-- COLONNE FILTRAGE -->
                         <div class="col-md-3">
                             <div class="map-controls">
-                                <h5 class="mb-3">
-                                    <i class="fas fa-filter me-2"></i>
-                                    Filtres
-                                </h5>
-                                <div class="mb-3">
-                                    <label class="form-label">Période</label>
-                                    <select class="form-select" id="time-range">
-                                        <option value="1">Dernière heure</option>
-                                        <option value="6">6 dernières heures</option>
-                                        <option value="12">12 dernières heures</option>
-                                        <option value="24" selected>24 dernières heures</option>
-                                    </select>
-                                </div>
-                            </div>
+                                <h5 class="mb-3"><i class="fas fa-filter me-2"></i>Filtres</h5>
 
-                            <div class="legend">
-                                <h5 class="mb-3">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Légende
-                                </h5>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background: green;"></div>
-                                    <span>Trafic fluide</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background: yellow;"></div>
-                                    <span>Trafic modéré</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background: red;"></div>
-                                    <span>Trafic dense</span>
+                                <!-- Formulaire de filtres -->
+                                <form id="filter-form">
+                                    <!-- Sélecteur de ville -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Ville</label>
+                                        <select class="form-select" name="selected_city" id="city-select">
+                                            {% for city in cities %}
+                                                <option value="{{ city }}" {% if selected_city == city %}selected{% endif %}>{{ city }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <!-- Sélecteur de localisation spécifique -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Localisation</label>
+                                        <select class="form-select" name="selected_location" id="location-select">
+                                            <option value="">Toutes les localisations</option>
+                                            {% for location in available_locations %}
+                                                <option value="{{ location }}" {% if selected_location == location %}selected{% endif %}>{{ location }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <!-- Sélecteur de date -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Date</label>
+                                        <select class="form-select" name="selected_date" id="date-select">
+                                            <option value="">Toutes les dates</option>
+                                            {% for date in available_dates %}
+                                                <option value="{{ date|date:'Y-m-d' }}" {% if selected_date == date|date:'Y-m-d' %}selected{% endif %}>
+                                                    {{ date|date:"d/m/Y" }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </form>
+
+                                <!-- Légende -->
+                                <div class="legend">
+                                    <h5 class="mb-3"><i class="fas fa-info-circle me-2"></i>Légende</h5>
+                                    <div><span style="color:green;">⬤</span> Trafic fluide</div>
+                                    <div><span style="color:orange;">⬤</span> Trafic modéré</div>
+                                    <div><span style="color:red;">⬤</span> Trafic dense</div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- COLONNE CARTE -->
                         <div class="col-md-9">
-                            <div id="map-container"></div>
+                            <div id="map-container">
+                                {{ map|safe }}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -102,56 +108,11 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script>
-    // Initialisation de la carte avec un point par défaut
-    var map = L.map('map-container').setView([18.079, -15.978], 13);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    // Stocker les marqueurs pour éviter les doublons
-    var trafficMarkers = [];
-
-    function updateMapWithTraffic(lat, lng, trafficLevel) {
-        if (!lat || !lng) return;
-
-        console.log("Mise à jour de la carte avec :", lat, lng, trafficLevel);
-
-        // Définir la couleur du marqueur en fonction du niveau de trafic
-        let color;
-        if (trafficLevel === 'fluide') color = 'green';
-        else if (trafficLevel === 'modéré') color = 'yellow';
-        else color = 'red';
-
-        // Supprimer tous les anciens marqueurs avant d'ajouter le nouveau
-        trafficMarkers.forEach(marker => map.removeLayer(marker));
-        trafficMarkers = [];
-
-        // Ajouter le nouveau marqueur
-        let marker = L.marker([lat, lng], {
-            icon: L.divIcon({
-                className: 'custom-marker',
-                html: `<div style="background:${color}; width:15px; height:15px; border-radius:50%;"></div>`,
-                iconSize: [15, 15]
-            })
-        }).addTo(map);
-
-        trafficMarkers.push(marker);
-
-        // Centrer la carte sur le nouveau point
-        map.setView([lat, lng], 14);
-    }
-
-    document.getElementById('time-range').addEventListener('change', function() {
-        const timeRange = this.value;
-        updateMap(timeRange);
+document.querySelectorAll('#city-select, #date-select, #location-select').forEach(select => {
+    select.addEventListener('change', function() {
+        document.getElementById('filter-form').submit();
     });
-
-    function updateMap(timeRange) {
-        console.log('Carte mise à jour pour la période:', timeRange);
-    }
-
+});
 </script>
 {% endblock %}
