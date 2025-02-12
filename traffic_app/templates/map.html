@@ -108,11 +108,17 @@
 {% endblock %}
 
 {% block extra_js %}
+
 <script>
-document.querySelectorAll('#city-select, #date-select, #location-select').forEach(select => {
-    select.addEventListener('change', function() {
-        document.getElementById('filter-form').submit();
+    document.querySelectorAll('#city-select, #location-select, #date-select').forEach(select => {
+        select.addEventListener('change', function() {
+            document.getElementById('filter-form').submit();
+        });
     });
-});
+
+    // Supprimez la tentative de mise à jour dynamique (Folium ne supporte pas cela directement)
 </script>
+
+
+
 {% endblock %}

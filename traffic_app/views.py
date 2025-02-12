@@ -121,27 +121,28 @@ CITIES = {
     "Boutilimit": [17.5500, -14.6833],
 }
 
+import folium
+from django.shortcuts import render
+from django.db.models import Q
+from datetime import datetime
+from .models import TrafficData
+
 def map_view(request):
-    # Récupérer les dates disponibles pour le filtrage
     available_dates = TrafficData.objects.dates('timestamp', 'day', order='DESC')
+    available_locations = TrafficData.objects.values_list('location_name', flat=True).distinct()
 
-    # Récupérer les paramètres sélectionnés depuis la requête GET
     selected_city = request.GET.get('selected_city', 'Nouakchott')
+    selected_location = request.GET.get('selected_location', '')
     selected_date = request.GET.get('selected_date', '')
-    selected_location = request.GET.get('selected_location', '')  # Localisation spécifique
 
-    # Création des filtres pour TrafficData
     traffic_filters = Q()
 
-    # Filtrer selon la ville sélectionnée
     if selected_city in CITIES:
         traffic_filters &= Q(location_name__icontains=selected_city)
 
-    # Filtrer selon la localisation spécifique (si fournie)
     if selected_location:
         traffic_filters &= Q(location_name__icontains=selected_location)
 
-    # Filtrer par date si un filtre de date est fourni
     if selected_date:
         try:
             selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
@@ -149,24 +150,19 @@ def map_view(request):
         except ValueError:
             selected_date = ''
 
-    # Récupérer les données filtrées
     traffic_data = TrafficData.objects.filter(traffic_filters).order_by('-timestamp')
 
-    # Vérifier s'il existe des données
+    # Centrer la carte sur la première localisation trouvée ou la ville par défaut
     if traffic_data.exists():
-        # Prendre le premier point pour centrer la carte
         first_data = traffic_data.first()
         map_center = [first_data.latitude, first_data.longitude]
     else:
-        # Utiliser la ville sélectionnée comme point central par défaut
         map_center = CITIES.get(selected_city, [18.0735, -15.9582])
 
-    # Créer la carte centrée sur l'emplacement sélectionné
     traffic_map = folium.Map(location=map_center, zoom_start=13)
 
-    # Ajouter un marqueur pour chaque analyse de trafic
+    # Ajouter tous les marqueurs
     for data in traffic_data:
-        # Déterminer la couleur et l'icône selon le niveau de congestion
         if data.congestion_level >= 0.8:
             color = 'red'
             icon = 'exclamation-triangle'
@@ -177,7 +173,6 @@ def map_view(request):
             color = 'green'
             icon = 'check-circle'
 
-        # Infos du popup
         popup_info = f'''
         <b>Localisation :</b> {data.location_name} <br>
         <b>Véhicules :</b> {data.vehicle_count} <br>
@@ -191,15 +186,12 @@ def map_view(request):
         folium.Marker(
             location=[data.latitude, data.longitude],
             popup=folium.Popup(popup_info, max_width=300),
-            icon=folium.Icon(color=color, icon=icon, prefix='fa')
+            icon=folium.Icon(color=color, icon=icon, prefix='fa'),
+            tooltip=data.location_name
         ).add_to(traffic_map)
 
-    # Récupérer toutes les localisations disponibles pour le filtrage
-    available_locations = TrafficData.objects.values_list('location_name', flat=True).distinct()
-
-    # Contexte pour le template
     context = {
-        'map': traffic_map._repr_html_(),
+        'map': traffic_map._repr_html_(),  # Assurez-vous que la carte est bien rendue
         'available_dates': available_dates,
         'available_locations': available_locations,
         'selected_date': selected_date,
@@ -207,8 +199,8 @@ def map_view(request):
         'selected_location': selected_location,
         'cities': CITIES.keys(),
     }
-
     return render(request, 'map.html', context)
+
 
 
 
