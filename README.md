@@ -1,12 +1,11 @@
-
-<h1 align="center">📊 Plateforme de suivi de l'indice des prix à la consommation en Mauritanie</h1>
+# 📊 Plateforme de suivi du trafic routier en Mauritanie
 
 <p align="center">
-  <b>Une plateforme interactive pour analyser l'évolution de l'INPC en Mauritanie, comprendre les dynamiques économiques et prendre des décisions éclairées.</b>  
+  <b>Une plateforme interactive pour analyser l'évolution du trafic routier en Mauritanie, comprendre les dynamiques de circulation et améliorer la gestion des infrastructures.</b>  
 </p>
 
 <p align="center">
-  🔍 <i>Suivi des prix</i> | 📈 <i>Visualisation des tendances économiques</i> | 💰 <i>Indicateurs économiques clés</i>  
+  🚗 <i>Suivi du trafic</i> | 📈 <i>Visualisation des tendances de circulation</i> | 🏗️ <i>Optimisation des infrastructures</i>  
 </p>
 
 ---
@@ -23,26 +22,26 @@
 ---
 
 ## 📖 Description du Projet  
-**Suivi de l'Indice des Prix à la Consommation en Mauritanie** est un outil interactif conçu pour suivre et analyser les fluctuations des prix des biens et services en Mauritanie. Grâce à des graphiques interactifs et des filtres avancés, cette plateforme vous permet de comprendre en profondeur les dynamiques économiques du pays.
+**Suivi du Trafic Routier en Mauritanie** est un outil interactif conçu pour surveiller et analyser le flux de circulation sur les routes mauritaniennes. Grâce à des cartes dynamiques et des statistiques en temps réel, cette plateforme permet d’optimiser la gestion du trafic et d'améliorer la planification des infrastructures.
 
-- **📊 Interface intuitive** pour explorer les variations des prix dans différentes catégories de produits.
-- **📉 Analyse détaillée** des tendances économiques avec des visualisations de données dynamiques.
-- **🛒 Comparaison** des prix entre régions et catégories, permettant une vue d'ensemble complète des tendances des prix.
+- **🚦 Interface intuitive** pour explorer les variations de trafic en fonction des heures et des zones géographiques.
+- **📊 Analyse détaillée** des tendances de circulation avec des visualisations interactives.
+- **🛣️ Optimisation des infrastructures** en identifiant les points de congestion et en proposant des solutions adaptées.
 
 --- 
 
 ## 🎯 Objectif  
-Le principal objectif de ce projet est de fournir une plateforme **dynamique** et **précise** pour l’analyse des prix à la consommation en Mauritanie. En offrant des outils interactifs, ce projet vise à :
+Le principal objectif de ce projet est de fournir une plateforme **dynamique** et **précise** pour l’analyse du trafic routier en Mauritanie. En offrant des outils interactifs, ce projet vise à :
 
-- **Faciliter l'accès** à l'information économique pour les chercheurs, économistes, décideurs, et citoyens.
-- **Soutenir la prise de décisions stratégiques** dans le domaine économique, notamment pour les politiques publiques et les entreprises.
-- **Proposer une plateforme évolutive** qui pourra intégrer d'autres indicateurs économiques au fur et à mesure.
+- **Faciliter la gestion du trafic** en identifiant les zones les plus congestionnées.
+- **Aider à la prise de décision** pour les urbanistes, autorités locales et gestionnaires d'infrastructures.
+- **Proposer une plateforme évolutive** intégrant des données en temps réel et des prévisions basées sur l’IA.
 
 🎯 **Pour qui ?**  
-- **Économistes & chercheurs** 📊  
-- **Gouvernements & institutions** 📈  
-- **Entrepreneurs & investisseurs** 💰  
-- **Citoyens curieux des tendances économiques** 🏠  
+- **Urbanistes & planificateurs** 🏗️  
+- **Gouvernements & collectivités** 📊  
+- **Entreprises de logistique & transport** 🚚  
+- **Citoyens et conducteurs** 🚗  
 
 ---
 
@@ -54,38 +53,29 @@ Le principal objectif de ce projet est de fournir une plateforme **dynamique** e
 | 🌍 **Django**   | Développement du serveur web |
 | 🗄️ **PostgreSQL** | Base de données |
 | 🎨 **HTML / CSS / JS** | Conception et développement de l'interface utilisateur |
-| 📊 **Chart.js / D3.js** | Visualisation interactive des données |
-| 🐳 **Docker**   | Conteneurisation et déploiement |
+| 📊 **Leaflet / D3.js** | Cartographie interactive et visualisation des données |
+| 🛰️ **API OpenStreetMap** | Collecte et affichage des données géographiques |
 
 ---
 
 ## 🚀 Fonctionnalités Clés  
-✅ **📊 Tableau de bord interactif** – Suivi des prix par produit et région en temps réel.  
-✅ **🔍 Filtres avancés** – Sélection de catégories, périodes spécifiques, et comparaisons géographiques.  
-✅ **📈 Visualisation dynamique** – Graphiques interactifs comme les courbes de tendance, heatmaps, histogrammes, et plus encore.  
-✅ **📡 API RESTful** – Accès aux données sous forme de JSON pour les intégrateurs et développeurs.  
-✅ **🔐 Mode Admin** – Interface dédiée pour gérer et modifier les données via Django Admin.  
-✅ **🐳 Déploiement Dockerisé** – Facilité d'exécution et de déploiement sans configuration locale complexe.
+✅ **🗺️ Cartographie interactive** – Visualisation en temps réel des flux de circulation.  
+✅ **📊 Statistiques détaillées** – Analyse des tendances du trafic selon l'heure et le jour.  
+✅ **🚦 Détection des zones de congestion** – Identification des axes à forte densité de véhicules.  
+✅ **🔍 Filtres avancés** – Sélection de périodes spécifiques et comparaison des flux de circulation.  
+✅ **📡 API RESTful** – Accès aux données pour les intégrateurs et développeurs.  
 
 ---
 
 ## 📸 Aperçu Visuel  
 
-### Vue d'une partie du tableau de bord :
-![Tableau de bord](images/a.png)
+### Carte des zones de trafic intense :  
+![Carte du trafic](images/1.png)
 
-### Visualisation de quelques produit :
-![Graphiques dynamiques](images/b.png)
+### Tableau de bord:  
+![Graphique de tendance](images/2.png)
 
 ---
-
-📬 Contact
-Pour toute question, suggestion ou collaboration, n'hésitez pas à me contacter :
-
-LinkedIn : www.linkedin.com/in/amadou-diallo-ing04
-
-Email : 23217@esp.mr
-
 
 ## 📦 Installation & Utilisation  
 
@@ -93,8 +83,8 @@ Suivez ces étapes pour installer et lancer le projet sur votre machine locale :
 
 ```bash
 # 1️⃣ Cloner le projet depuis GitHub
-git clone https://github.com/AmadouMamadouDiallo/Suivi-de-I-indice-des-prix-a-la-consommation-en-Mauritanie.git
-cd Suivi-de-I-indice-des-prix-a-la-consommation-en-Mauritanie
+git clone https://github.com/AmadouMamadouDiallo/Suivi-du-trafic-routier-Mauritanie.git
+cd Suivi-du-trafic-routier-Mauritanie
 
 # 2️⃣ Créer un environnement virtuel et installer les dépendances
 python -m venv venv
@@ -109,4 +99,12 @@ python manage.py runserver
 
 # 5️⃣ Accéder à l'application via votre navigateur
 http://127.0.0.1:8000/
+```
 
+---
+
+## 📬 Contact  
+Pour toute question, suggestion ou collaboration, n'hésitez pas à me contacter :
+
+📧 Email : 23217@esp.mr  
+🔗 LinkedIn : www.linkedin.com/in/amadou-diallo-ing04
